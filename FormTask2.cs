@@ -45,7 +45,6 @@ namespace CG_Lab2
             int deltaX = Math.Abs(x0 - x1);
             int deltaY = Math.Abs(y0 - y1);
             float m = (float)deltaY / (float)deltaX;
-            //float c = y0 - m * x0;
 
             int error = 0;
             int deltaErrY = deltaY + 1;
