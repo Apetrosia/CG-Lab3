@@ -1,4 +1,4 @@
-Computer graphics lab2
+Computer graphics lab3
 
 Задание 1. Заливка и выделение границы.
 
