@@ -14,134 +14,231 @@ namespace CG_Lab2
 {
     public partial class FormTask2 : Form
     {
-        int[] pixelsRed = new int[256];
-        int[] pixelsGreen = new int[256];
-        int[] pixelsBlue = new int[256];
+        Point[] points = new Point[2];
+        Point defaultPoint = new Point(-1, -1);
 
         public FormTask2()
         {
             InitializeComponent();
+            Bitmap PictureBoxClear = new Bitmap(PictureBox.Width, PictureBox.Height);
+            using (Graphics g = Graphics.FromImage(PictureBoxClear))
+                g.Clear(Color.White);
+            PictureBox.Image = PictureBoxClear;
+            points[0] = defaultPoint;
+            points[1] = defaultPoint;
         }
 
         private void button1_Click(object sender, EventArgs e)
         {
-            OpenFileDialog openFileDialog = new OpenFileDialog();
-            openFileDialog.Filter = "Image files (*.jpg, *.png, *.bmp)|*.jpg;*.png;*.bmp";
-
-            if (openFileDialog.ShowDialog() == DialogResult.OK)
-            {
-                try
-                {
-                    Bitmap image = new Bitmap(openFileDialog.FileName);
-                    
-                    /*
-                    if (image.Width > image.Height)
-                    {
-                        PictureBoxSource.Width = 250;
-                        PictureBoxSource.Height = image.Height * 250 / image.Width;
-                        PictureBoxSource.Location = new Point(21, 38);
-                    }
-                    else if (image.Width < image.Height)
-                    {
-                        PictureBoxSource.Height = 200;
-                        PictureBoxSource.Width = image.Width * 200 / image.Height;
-                        PictureBoxSource.Location = new Point(46, 17);
-                    }
-                    else
-                    {
-                        PictureBoxSource.Width = 200;
-                        PictureBoxSource.Height = 200;
-                        PictureBoxSource.Location = new Point(21, 17);
-                    }
-                    */
-
-                    PictureBoxSource.Image = image;
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Ошибка при загрузке изображения: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            }
+            Bitmap PictureBoxClear = new Bitmap(PictureBox.Width, PictureBox.Height);
+            using (Graphics g = Graphics.FromImage(PictureBoxClear))
+                g.Clear(Color.White);
+            PictureBox.Image = PictureBoxClear;
+            points[0] = defaultPoint;
+            points[1] = defaultPoint;
         }
 
-        private void GetRGBImages(Bitmap image)
+        private void plot(int x, int y)
         {
-            for (int i = 0; i < 256; i++)
-            {
-                pixelsRed[i] = 0;
-                pixelsGreen[i] = 0;
-                pixelsBlue[i] = 0;
-            }
-
-            Bitmap imageRed = new Bitmap(image.Width, image.Height);
-            Bitmap imageGreen = new Bitmap(image.Width, image.Height);
-            Bitmap imageBlue = new Bitmap(image.Width, image.Height);
-
-            for (int i = 0; i < image.Width; i++)
-                for (int j = 0; j < image.Height; j++)
-                {
-                    int R = image.GetPixel(i, j).R;
-                    int G = image.GetPixel(i, j).G;
-                    int B = image.GetPixel(i, j).B;
-
-                    imageRed.SetPixel(i, j, Color.FromArgb(R, 0, 0));
-                    imageGreen.SetPixel(i, j, Color.FromArgb(0, G, 0));
-                    imageBlue.SetPixel(i, j, Color.FromArgb(0, 0, B));
-
-                    pixelsRed[R]++;
-                    pixelsGreen[G]++;
-                    pixelsBlue[B]++;
-                }
-
-            pictureBoxRed.Image = imageRed;
-            pictureBoxGreen.Image = imageGreen;
-            pictureBoxBlue.Image = imageBlue;
+            /*
+            for x from x0 to x1
+            plot(x, y)
+            if D > 0
+            y = y + 1
+            D = D - 2*dx
+            end if
+            D = D + 2*dy
+            */
+            //pb.SetPixel(x, y, Color.Black);
         }
 
-        private void DrawHistograms()
+        private void DrawLineBresenham(int x0, int x1, int y0, int y1)
         {
-            Bitmap histImageRed = new Bitmap(257, 200);
-            Bitmap histImageGreen = new Bitmap(257, 200);
-            Bitmap histImageBlue = new Bitmap(257, 200);
+            Bitmap pb = new Bitmap(PictureBox.Image);
+            
+            int deltaX = Math.Abs(x0 - x1);
+            int deltaY = Math.Abs(y0 - y1);
+            float m = (float)deltaY / (float)deltaX;
+            //float c = y0 - m * x0;
 
-            using (Graphics gR = Graphics.FromImage(histImageRed))
-            using (Graphics gG = Graphics.FromImage(histImageGreen))
-            using (Graphics gB = Graphics.FromImage(histImageBlue))
+            int error = 0;
+            int deltaErrY = deltaY + 1;
+            int deltaErrX = deltaX + 1;
+
+            int dirY = y1 >= y0 ? 1 : -1;
+            int dirX = x1 >= x0 ? 1 : -1;
+
+            if (m <= 1)
             {
-                gR.Clear(Color.White);
-                gG.Clear(Color.White);
-                gB.Clear(Color.White);
-
-                for (int i = 0; i < 256; i++)
+                if (x0 <= x1)
                 {
-                    int height = pixelsRed.Max() == 0 ? 0 : (int)((double)pixelsRed[i] / pixelsRed.Max() * 200);
-                    gR.FillRectangle(Brushes.Red, i, 200 - height, 1, height);
-                    height = pixelsGreen.Max() == 0 ? 0 : (int)((double)pixelsGreen[i] / pixelsGreen.Max() * 200);
-                    gG.FillRectangle(Brushes.Green, i, 200 - height, 1, height);
-                    height = pixelsBlue.Max() == 0 ? 0 : (int)((double)pixelsBlue[i] / pixelsBlue.Max() * 200);
-                    gB.FillRectangle(Brushes.Blue, i, 200 - height, 1, height);
+                    int y = y0;
+                    for (int x = x0; x <= x1; x++)
+                    {
+                        pb.SetPixel(x, y, Color.Black);
+                        error += deltaErrY;
+                        if (error >= deltaX + 1)
+                        {
+                            y += dirY;
+                            error -= deltaX + 1;
+                        }
+                    }
+                }
+                else
+                {
+                    int y = y0;
+                    for (int x = x0; x >= x1; x--)
+                    {
+                        pb.SetPixel(x, y, Color.Black);
+                        error += deltaErrY;
+                        if (error >= deltaX + 1)
+                        {
+                            y += dirY;
+                            error -= deltaX + 1;
+                        }
+                    }
                 }
             }
-
-            histRed.Image = histImageRed;
-            histGreen.Image = histImageGreen;
-            histBlue.Image = histImageBlue;
+            else
+            {
+                if (y0 <= y1)
+                {
+                    int x = x0;
+                    for (int y = y0; y <= y1; y++)
+                    {
+                        pb.SetPixel(x, y, Color.Black);
+                        error += deltaErrX;
+                        if (error >= deltaY + 1)
+                        {
+                            x += dirX;
+                            error -= deltaY + 1;
+                        }
+                    }
+                }
+                else
+                {
+                    int x = x0;
+                    for (int y = y0; y >= y1; y--)
+                    {
+                        pb.SetPixel(x, y, Color.Black);
+                        error += deltaErrX;
+                        if (error >= deltaY + 1)
+                        {
+                            x += dirX;
+                            error -= deltaY + 1;
+                        }
+                    }
+                }
+            }
+            PictureBox.Image = pb;
         }
 
-        private void button2_Click(object sender, EventArgs e)
+        private void DrawLineVu(int x0, int x1, int y0, int y1)
         {
-            if (PictureBoxSource.Image == null)
+            Bitmap pb = new Bitmap(PictureBox.Image);
+            
+            pb.SetPixel(x1, y1, Color.FromArgb(255, 0, 0, 0));
+
+            float deltaX = x1 - x0;
+            float deltaY = y1 - y0;
+            float m = Math.Abs(deltaY / deltaX);
+
+            if (m <= 1)
+            {
+                float gradient = deltaY / deltaX;
+                if (x0 <= x1)
+                {
+                    float y = y0 + gradient;
+                    for (int x = x0 + 1; x <= x1 - 1; x++)
+                    {
+                        int alpha = (int)((1 - (y - (int)y)) * 255);
+                        pb.SetPixel(x, (int)y, Color.FromArgb(alpha, 0, 0, 0));
+                        alpha = (int)((y - (int)y) * 255);
+                        pb.SetPixel(x, (int)y + 1, Color.FromArgb(alpha, 0, 0, 0));
+                        y += gradient;
+                    }
+                }
+                else
+                {
+                    gradient *= -1;
+                    float y = y0 + gradient;
+                    for (int x = x0 - 1; x >= x1 + 1; x--)
+                    {
+                        int alpha = (int)((1 - (y - (int)y)) * 255);
+                        pb.SetPixel(x, (int)y, Color.FromArgb(alpha, 0, 0, 0));
+                        alpha = (int)((y - (int)y) * 255);
+                        pb.SetPixel(x, (int)y + 1, Color.FromArgb(alpha, 0, 0, 0));
+                        y += gradient;
+                    }
+                }
+            }
+            else
+            {
+                float gradient = deltaX / deltaY;
+                if (y0 <= y1)
+                {
+                    float x = x0 + gradient;
+                    for (int y = y0 + 1; y <= y1 - 1; y++)
+                    {
+                        int alpha = (int)((1 - (x - (int)x)) * 255);
+                        pb.SetPixel((int)x, y, Color.FromArgb(alpha, 0, 0, 0));
+                        alpha = (int)((x - (int)x) * 255);
+                        pb.SetPixel((int)x + 1, y, Color.FromArgb(alpha, 0, 0, 0));
+                        x += gradient;
+                    }
+                }
+                else
+                {
+                    gradient *= -1;
+                    float x = x0 + gradient;
+                    for (int y = y0 - 1; y >= y1 + 1; y--)
+                    {
+                        int alpha = (int)((1 - (x - (int)x)) * 255);
+                        pb.SetPixel((int)x, y, Color.FromArgb(alpha, 0, 0, 0));
+                        alpha = (int)((x - (int)x) * 255);
+                        pb.SetPixel((int)x + 1, y, Color.FromArgb(alpha, 0, 0, 0));
+                        x += gradient;
+                    }
+                }
+            }
+            PictureBox.Image = pb;
+        }
+
+        private void PictureBox_MouseClick(object sender, MouseEventArgs e)
+        {
+            if (points[0].X == -1)
+            {
+                points[0].X = e.Location.X;
+                points[0].Y = e.Location.Y;
+                Bitmap pb = new Bitmap(PictureBox.Image);
+                pb.SetPixel(points[0].X, points[0].Y, Color.Black);
+                PictureBox.Image = pb;
                 return;
+            }
+            else
+            {
 
-            GetRGBImages(new Bitmap(PictureBoxSource.Image));
-        }
-
-        private void button3_Click(object sender, EventArgs e)
-        {
-            if (PictureBoxSource.Image == null)
-                return;
-
-            DrawHistograms();
+                if (points[1].X == -1)
+                {
+                    points[1].X = e.Location.X;
+                    points[1].Y = e.Location.Y;
+                }
+                else
+                {
+                    points[0].X = points[1].X;
+                    points[0].Y = points[1].Y;
+                    points[1].X = e.Location.X;
+                    points[1].Y = e.Location.Y;
+                }
+                if (!checkBox1.Checked)
+                    DrawLineBresenham(points[0].X, points[1].X, points[0].Y, points[1].Y);
+                else
+                    DrawLineVu(points[0].X, points[1].X, points[0].Y, points[1].Y);
+                Bitmap pb = new Bitmap(PictureBox.Image);
+                pb.SetPixel(points[0].X, points[0].Y, Color.Red);
+                pb.SetPixel(points[1].X, points[1].Y, Color.Red);
+                PictureBox.Image = pb;
+            }
         }
     }
 }
