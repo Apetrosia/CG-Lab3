@@ -38,20 +38,6 @@ namespace CG_Lab2
             points[1] = defaultPoint;
         }
 
-        private void plot(int x, int y)
-        {
-            /*
-            for x from x0 to x1
-            plot(x, y)
-            if D > 0
-            y = y + 1
-            D = D - 2*dx
-            end if
-            D = D + 2*dy
-            */
-            //pb.SetPixel(x, y, Color.Black);
-        }
-
         private void DrawLineBresenham(int x0, int x1, int y0, int y1)
         {
             Bitmap pb = new Bitmap(PictureBox.Image);
