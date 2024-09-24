@@ -5,166 +5,240 @@ using System.Data;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Linq;
+using System.Reflection;
 using System.Reflection.Emit;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.Rebar;
 
 namespace CG_Lab2
 {
     public partial class FormTask3 : Form
     {
-        private Bitmap RGBImage;
-        private Bitmap HSVImage;
+        int minDifference = 200; // Минимальная разница между цветами 
+        private Random rand = new Random();
+        private List<Point> points = new List<Point>(); // Список для хранения точек
+        private Bitmap drawingBitmap; // Холст для рисования
+        private Graphics graphics;
         public FormTask3()
         {
             InitializeComponent();
-            openFileDialog1.Filter = "Image Files(*.BMP;*.JPG;**.PNG)|*.BMP;*.JPG;**.PNG|All files (*.*)|*.*";
+
+
+            pictureBox1.BackColor = Color.White; // Цвет фона
+
+            // Создание Bitmap для рисования
+            drawingBitmap = new Bitmap(pictureBox1.Width, pictureBox1.Height);
+
+
+            pictureBox1.MouseClick += PictureBox_MouseClick;
+            pictureBox1.Paint += PictureBox_Paint;
         }
 
-        private void RGBtoHSV(Color color, out float hue, out float saturation, out float value)
+
+        private void PictureBox_MouseClick(object sender, MouseEventArgs e)
         {
-            float red = color.R / 255f;
-            float green = color.G / 255f;
-            float blue = color.B / 255f;
-
-            float min = Math.Min(red, Math.Min(green, blue));
-            float max = Math.Max(red, Math.Max(green, blue));
-
-            hue = 0;
-            if (min == max)
+            if (points.Count < 3) // Пока не выбрано три точки
             {
-                hue = 0;
-            }
-            else if (max == red && green >= blue)
-            {
-                hue = 60 * (green - blue) / (float)(max - min) + 0;
-            }
-            else if (max == red && green < blue)
-            {
-                hue = 60 * (green - blue) / (float)(max - min) + 360;
-            }
-            else if (max == green)
-            {
-                hue = 60 * (blue - red) / (float)(max - min) + 120;
-            }
-            else if (max == blue)
-            {
-                hue = 60 * (red - green) / (float)(max - min) + 240;
+                points.Add(new Point(e.X, e.Y)); // Добавляем координаты точки
+                ((PictureBox)sender).Invalidate(); // Перерисовываем PictureBox
             }
 
-            saturation = (max == 0) ? 0 : 1f - (1f * min / max);
-
-            value = max ;
-        }
-        private Color HSVtoRGB(float hue, float saturation, float value)
-        {
-            int hi = Convert.ToInt32(Math.Floor(hue / 60)) % 6;
-            float f = hue / 60 - (float)Math.Floor(hue / 60);
-
-            value = value * 255;
-            int v = Convert.ToInt32(value);
-            int p = Convert.ToInt32(value * (1 - saturation));
-            int q = Convert.ToInt32(value * (1 - f * saturation));
-            int t = Convert.ToInt32(value * (1 - (1 - f) * saturation));
-
-
-            if (hi == 0)
-                return Color.FromArgb(255, v, t, p);
-            else if (hi == 1)
-                return Color.FromArgb(255, q, v, p);
-            else if (hi == 2)
-                 return Color.FromArgb(255, p, v, t);
-            else if (hi == 3)
-                return Color.FromArgb(255, p, q, v);
-            else if (hi == 4)
-                return Color.FromArgb(255, t, p, v);
-            else
-                return Color.FromArgb(255, v, p, q);
+            if (points.Count == 3) // Когда три точки заданы
+            {
+                DrawTriangle();
+            }
         }
 
-        private Bitmap makeHSVImage(Bitmap image, float hShift, float sShift, float vShift)
-        {
-            Bitmap result = new Bitmap(image.Width, image.Height);
 
-            for (int y = 0; y < image.Height; y++)
+        private void PictureBox_Paint(object sender, PaintEventArgs e)
+        {
+
+
+            e.Graphics.DrawImage(drawingBitmap, 0, 0);
+
+            // Рисуем точки на PictureBox
+            foreach (Point p in points)
             {
-                for (int x = 0; x < image.Width; x++)
+                e.Graphics.FillEllipse(Brushes.Red, p.X - 2, p.Y - 2, 4, 4); // Рисуем точки
+            }
+            
+        }
+
+        private void RasterizeTriangle(PointF p1, Color c1, PointF p2, Color c2, PointF p3, Color c3)
+        {
+            // Сортируем вершины треугольника по Y-координате
+            if (p2.Y < p1.Y) { Swap(ref p1, ref p2); Swap(ref c1, ref c2); }
+            if (p3.Y < p1.Y) { Swap(ref p1, ref p3); Swap(ref c1, ref c3); }
+            if (p3.Y < p2.Y) { Swap(ref p2, ref p3); Swap(ref c2, ref c3); }
+
+            using (Graphics g = Graphics.FromImage(drawingBitmap))
+            {
+                // Перебор всех строк треугольника (Y-координаты)
+                for (float y = p1.Y; y <= p3.Y; y++)
                 {
-                    Color pixelColor = image.GetPixel(x, y);
-                    float h, s, v;
-                    RGBtoHSV(pixelColor, out h, out s, out v);
-
-                    // Изменение значений оттенка, насыщенности и яркости
-                    h = (h + hShift) % 360; //от 0 до 360
-                    s = Math.Min(1, s * sShift); //от 0 до 1
-                    v = Math.Min(1, v * vShift); // от 0 до 1
-
-                    Color newColor = HSVtoRGB(h, s, v);
-                    result.SetPixel(x, y, newColor);
+                    if (y < p2.Y)
+                    {
+                        // Верхняя часть треугольника
+                        DrawScanLine(g, y, p1, c1, p3, c3, p1, c1, p2, c2);
+                    }
+                    else
+                    {
+                        // Нижняя часть треугольника
+                        DrawScanLine(g, y, p1, c1, p3, c3, p2, c2, p3, c3);
+                    }
                 }
             }
-            return result;
         }
-        private void trackBar_Scroll(object sender, EventArgs e)
-        {
-            int trackBar1_new_value = trackBar1.Value % 360;
-            label1.Text = String.Format("Hue: {0}°", trackBar1_new_value);
-            label2.Text = String.Format("Saturation: {0}%", trackBar2.Value);
-            label3.Text = String.Format("Brightness: {0}%", trackBar3.Value);
-            if (RGBImage != null)
-            {
-                float h = trackBar1.Value;
-                float s = trackBar2.Value / 100f;
-                float v = trackBar3.Value / 100f;
 
-                HSVImage = makeHSVImage(RGBImage, h, s, v);
-                pictureBox1.Image = HSVImage;
+        // Отрисовка одной строки (сканлайна) треугольника
+        private void DrawScanLine(Graphics g, float y, PointF pA, Color cA, PointF pB, Color cB, PointF pC, Color cC, PointF pD, Color cD)
+        {
+            // Интерполируем X и цвет для левой и правой границы строки
+            float x1 = Interpolate(pA.Y, pA.X, pB.Y, pB.X, y);
+            float x2 = Interpolate(pC.Y, pC.X, pD.Y, pD.X, y);
+
+            Color c1 = InterpolateColor(pA.Y, cA, pB.Y, cB, y);
+            Color c2 = InterpolateColor(pC.Y, cC, pD.Y, cD, y);
+
+            if (x1 > x2) { Swap(ref x1, ref x2); Swap(ref c1, ref c2); } // Упорядочим по X
+
+            // Закрашиваем строку пикселей между x1 и x2
+            for (float x = x1; x <= x2; x++)
+            {
+                float t = (x - x1) / (x2 - x1); // Нормализуем положение между x1 и x2
+                Color color = LerpColor(c1, c2, t); // Линейная интерполяция цвета
+                drawingBitmap.SetPixel((int)x, (int)y, color); // Устанавливаем цвет пикселя
             }
+        }
+
+        // Линейная интерполяция значений
+        private float Interpolate(float y1, float x1, float y2, float x2, float y)
+        {
+            if (y1 == y2) return x1; // Защита от деления на 0
+            return x1 + (x2 - x1) * ((y - y1) / (y2 - y1));
+        }
+
+        // Линейная интерполяция цвета по оси Y
+        private Color InterpolateColor(float y1, Color c1, float y2, Color c2, float y)
+        {
+            if (y1 == y2) return c1; // Защита от деления на 0
+            float t = (y - y1) / (y2 - y1);
+            byte r = (byte)(c1.R + (c2.R - c1.R) * t);
+            byte g = (byte)(c1.G + (c2.G - c1.G) * t);
+            byte b = (byte)(c1.B + (c2.B - c1.B) * t);
+            return Color.FromArgb(r, g, b);
+        }
+
+        // Линейная интерполяция между двумя цветами
+        private Color LerpColor(Color c1, Color c2, float t)
+        {
+            byte r = (byte)(c1.R + (c2.R - c1.R) * t);
+            byte g = (byte)(c1.G + (c2.G - c1.G) * t);
+            byte b = (byte)(c1.B + (c2.B - c1.B) * t);
+            return Color.FromArgb(r, g, b);
+        }
+
+        // Метод для обмена значениями
+        private void Swap<T>(ref T a, ref T b)
+        {
+            T temp = a;
+            a = b;
+            b = temp;
+        }
+        // Метод для рисования треугольника на Bitmap
+        private void DrawTriangle()
+        {
+            using (Graphics g = Graphics.FromImage(drawingBitmap))
+            {
+                Pen pen = new Pen(Color.DarkCyan, 1);
+                g.DrawPolygon(pen, points.ToArray()); // Рисуем треугольник
+            }
+
+            Invalidate(); // Перерисовываем форму
+        }
+
+        // Сбрасываем точки
+        private void ResetPoints()
+        {
+            points.Clear(); // Очищаем список точек
+            drawingBitmap = new Bitmap(drawingBitmap.Width, drawingBitmap.Height);
+            pictureBox1.Image = drawingBitmap;
+            Invalidate(); 
         }
 
         private void button1_Click(object sender, EventArgs e)
         {
-            pictureBox1.Image.Save("image_new.jpeg", ImageFormat.Jpeg);
+            ResetPoints();
+            pictureBox1.Refresh();  
         }
+
 
         private void button2_Click(object sender, EventArgs e)
         {
-            openFileDialog1.FileName = "";
-            openFileDialog1.Title = "Выберите изображение";
-            if (openFileDialog1.ShowDialog() == DialogResult.OK)
+            if (points.Count == 3) // Если выбраны три точки
             {
-                RGBImage = new Bitmap(openFileDialog1.FileName);
-                int old_pb_width = pictureBox1.Width;
-                int old_pb_height = pictureBox1.Height;
-                pictureBox1.Size = RGBImage.Size;
-                pictureBox1.Image = RGBImage;
+                
+                List<Color> vertexColors = GenerateDistinctColors(minDifference);
+                // Задаем случайные цвета для каждой вершины
+                Color c1 = vertexColors[0];
+                Color c2 = vertexColors[1];
+                Color c3 = vertexColors[2];
 
-                // Получаем размер изображения
-                int imageWidth = RGBImage.Width;
-                int imageHeight = RGBImage.Height;
+                // Растеризация треугольника с градиентной заливкой
+                RasterizeTriangle(points[0], c1, points[1], c2, points[2], c3);
 
-                //разница между размером изображения и старым размером picturebox
-                int extraWidth = imageWidth - old_pb_width;
-                int extraHeight = imageHeight - old_pb_height;
+                // Отображаем на PictureBox
+                pictureBox1.Image = drawingBitmap;
 
-                // Ограничение размеров по экрану
-                int screenWidth = Screen.PrimaryScreen.WorkingArea.Width;
-                int screenHeight = Screen.PrimaryScreen.WorkingArea.Height;
+                // Очищаем список точек для новой отрисовки
+                points.Clear();
 
-                int newWidth = Math.Min(imageWidth + extraWidth, screenWidth);
-                int newHeight = Math.Min(imageHeight + extraHeight, screenHeight);
-
-                // Изменяем размер формы, чтобы вместить изображение
-                this.Size = new Size(newWidth, newHeight);
-
-
-                this.Update();
             }
-
+            else
+            {
+                MessageBox.Show("Выберите три точки на изображении!");
+            }
         }
 
+        // Генерация трех случайных цветов с минимальной разницей по RGB
+        private List<Color> GenerateDistinctColors(int minDifference)
+        {
+            List<Color> colors = new List<Color>();
+
+            while (colors.Count < 3)
+            {
+                Color newColor = GenerateRandomColor();
+                // Если список пуст, условие вернёт true, и цвет добавится
+                if (colors.All(existingColor => ColorDifference(existingColor, newColor) >= minDifference))
+                {
+                    colors.Add(newColor);
+                }
+            }
+
+            return colors;
+        }
+
+        // Вычисление различия между двумя цветами (евклидово расстояние в цветовом пространстве RGB)
+        private int ColorDifference(Color c1, Color c2)
+        {
+            int rDiff = c1.R - c2.R;
+            int gDiff = c1.G - c2.G;
+            int bDiff = c1.B - c2.B;
+
+            return (int)Math.Sqrt(rDiff * rDiff + gDiff * gDiff + bDiff * bDiff);
+        }
+        // Генерация случайного цвета
+        private Color GenerateRandomColor()
+        {
+            int r = rand.Next(256); 
+            int g = rand.Next(256); 
+            int b = rand.Next(256); 
+
+            return Color.FromArgb(r, g, b);
+        }
 
     }
 }
