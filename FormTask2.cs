@@ -16,13 +16,14 @@ namespace CG_Lab2
     {
         Point[] points = new Point[2];
         Point defaultPoint = new Point(-1, -1);
+        Color bg = Color.White;
 
         public FormTask2()
         {
             InitializeComponent();
             Bitmap PictureBoxClear = new Bitmap(PictureBox.Width, PictureBox.Height);
             using (Graphics g = Graphics.FromImage(PictureBoxClear))
-                g.Clear(Color.White);
+                g.Clear(bg);
             PictureBox.Image = PictureBoxClear;
             points[0] = defaultPoint;
             points[1] = defaultPoint;
@@ -32,7 +33,7 @@ namespace CG_Lab2
         {
             Bitmap PictureBoxClear = new Bitmap(PictureBox.Width, PictureBox.Height);
             using (Graphics g = Graphics.FromImage(PictureBoxClear))
-                g.Clear(Color.White);
+                g.Clear(bg);
             PictureBox.Image = PictureBoxClear;
             points[0] = defaultPoint;
             points[1] = defaultPoint;
@@ -137,9 +138,15 @@ namespace CG_Lab2
                     for (int x = x0 + 1; x <= x1 - 1; x++)
                     {
                         int alpha = (int)((1 - (y - (int)y)) * 255);
-                        pb.SetPixel(x, (int)y, Color.FromArgb(alpha, 0, 0, 0));
+                        //pb.SetPixel(x, (int)y, Color.FromArgb(alpha, 0, 0, 0));
+                        pb.SetPixel(x, (int)y, Color.FromArgb(255, 0 + (255 - alpha) * bg.R / 255,
+                            0 + (255 - alpha) * bg.G / 255,
+                            0 + (255 - alpha) * bg.B / 255));
                         alpha = (int)((y - (int)y) * 255);
-                        pb.SetPixel(x, (int)y + 1, Color.FromArgb(alpha, 0, 0, 0));
+                        //pb.SetPixel(x, (int)y + 1, Color.FromArgb(alpha, 0, 0, 0));
+                        pb.SetPixel(x, (int)y + 1, Color.FromArgb(255, 0 + (255 - alpha) * bg.R / 255,
+                            0 + (255 - alpha) * bg.G / 255,
+                            0 + (255 - alpha) * bg.B / 255));
                         y += gradient;
                     }
                 }
@@ -150,9 +157,15 @@ namespace CG_Lab2
                     for (int x = x0 - 1; x >= x1 + 1; x--)
                     {
                         int alpha = (int)((1 - (y - (int)y)) * 255);
-                        pb.SetPixel(x, (int)y, Color.FromArgb(alpha, 0, 0, 0));
+                        //pb.SetPixel(x, (int)y, Color.FromArgb(alpha, 0, 0, 0));
+                        pb.SetPixel(x, (int)y, Color.FromArgb(255, 0 + (255 - alpha) * bg.R / 255,
+                            0 + (255 - alpha) * bg.G / 255,
+                            0 + (255 - alpha) * bg.B / 255));
                         alpha = (int)((y - (int)y) * 255);
-                        pb.SetPixel(x, (int)y + 1, Color.FromArgb(alpha, 0, 0, 0));
+                        //pb.SetPixel(x, (int)y + 1, Color.FromArgb(alpha, 0, 0, 0));
+                        pb.SetPixel(x, (int)y + 1, Color.FromArgb(255, 0 + (255 - alpha) * bg.R / 255,
+                            0 + (255 - alpha) * bg.G / 255,
+                            0 + (255 - alpha) * bg.B / 255));
                         y += gradient;
                     }
                 }
@@ -166,9 +179,15 @@ namespace CG_Lab2
                     for (int y = y0 + 1; y <= y1 - 1; y++)
                     {
                         int alpha = (int)((1 - (x - (int)x)) * 255);
-                        pb.SetPixel((int)x, y, Color.FromArgb(alpha, 0, 0, 0));
+                        //pb.SetPixel((int)x, y, Color.FromArgb(alpha, 0, 0, 0));
+                        pb.SetPixel((int)x, y, Color.FromArgb(255, 0 + (255 - alpha) * bg.R / 255,
+                            0 + (255 - alpha) * bg.G / 255,
+                            0 + (255 - alpha) * bg.B / 255));
                         alpha = (int)((x - (int)x) * 255);
-                        pb.SetPixel((int)x + 1, y, Color.FromArgb(alpha, 0, 0, 0));
+                        //pb.SetPixel((int)x + 1, y, Color.FromArgb(alpha, 0, 0, 0));
+                        pb.SetPixel((int)x + 1, y, Color.FromArgb(255, 0 + (255 - alpha) * bg.R / 255,
+                            0 + (255 - alpha) * bg.G / 255,
+                            0 + (255 - alpha) * bg.B / 255));
                         x += gradient;
                     }
                 }
@@ -179,9 +198,15 @@ namespace CG_Lab2
                     for (int y = y0 - 1; y >= y1 + 1; y--)
                     {
                         int alpha = (int)((1 - (x - (int)x)) * 255);
-                        pb.SetPixel((int)x, y, Color.FromArgb(alpha, 0, 0, 0));
+                        //pb.SetPixel((int)x, y, Color.FromArgb(alpha, 0, 0, 0));
+                        pb.SetPixel((int)x, y, Color.FromArgb(255, 0 + (255 - alpha) * bg.R / 255,
+                            0 + (255 - alpha) * bg.G / 255,
+                            0 + (255 - alpha) * bg.B / 255));
                         alpha = (int)((x - (int)x) * 255);
-                        pb.SetPixel((int)x + 1, y, Color.FromArgb(alpha, 0, 0, 0));
+                        //pb.SetPixel((int)x + 1, y, Color.FromArgb(alpha, 0, 0, 0));
+                        pb.SetPixel((int)x + 1, y, Color.FromArgb(255, 0 + (255 - alpha) * bg.R / 255,
+                            0 + (255 - alpha) * bg.G / 255,
+                            0 + (255 - alpha) * bg.B / 255));
                         x += gradient;
                     }
                 }
@@ -220,8 +245,6 @@ namespace CG_Lab2
                 else
                     DrawLineVu(points[0].X, points[1].X, points[0].Y, points[1].Y);
                 Bitmap pb = new Bitmap(PictureBox.Image);
-                pb.SetPixel(points[0].X, points[0].Y, Color.Red);
-                pb.SetPixel(points[1].X, points[1].Y, Color.Red);
                 PictureBox.Image = pb;
             }
         }
