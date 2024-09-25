@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
@@ -7,86 +8,236 @@ namespace CG_Lab2
 {
     public partial class FormTask1 : Form
     {
+
+        private bool isDrawing = false;
+        private Point previousPoint;
+        private Bitmap bitmap;
+        private Graphics graphics;
+
+        private Pen penForDrawing = new Pen(Color.Black, 5);
+
+        private Color targetColor;
+
+        private enum Mode { Drawing, Fill1, Fill2 }
+        private Mode currentMode = Mode.Drawing;
+
+        private Point clickedPoint;
+
+        private Bitmap pattern;
+
+
+        private List<Point> borderPoints = new List<Point>();
+
         public FormTask1()
         {
             InitializeComponent();
+
+            bitmap = new Bitmap(pictureBox1.Width, pictureBox1.Height);
+            graphics = Graphics.FromImage(bitmap);
+            graphics.Clear(Color.White);
+            pictureBox1.Image = bitmap;
+            targetColor = colorPreviewPanel.BackColor;
         }
 
-        private enum ConvertionType { PAL, HDTV }
-
-        private Bitmap ConvertToGray(Bitmap image, ConvertionType convertionType)
+        private void pictureBox1_MouseDown(object sender, MouseEventArgs e)
         {
-            Bitmap grayScale = new Bitmap(image.Width, image.Height);
-            for (int x = 0; x < image.Width; x++)
-            {
-                for (int y = 0; y < image.Height; y++)
-                {
-                    Color pixel = image.GetPixel(x, y);
-                    
-                    int gray = 0;
-                    if (convertionType == ConvertionType.PAL)
-                    {
-                        gray = (int)(0.299 * pixel.R + 0.587 * pixel.G + 0.114 * pixel.B);
-                    }
-                    else if (convertionType == ConvertionType.HDTV)
-                    {
-                        gray = (int)(0.2126 * pixel.R + 0.7152 * pixel.G + 0.0722 * pixel.B);
-                    }
-                    
-                    grayScale.SetPixel(x, y, Color.FromArgb(gray, gray, gray));
-                }
-            }
-            return grayScale;
+            if (currentMode != Mode.Drawing)
+                return;
+
+            isDrawing = true;
+            previousPoint = e.Location;
         }
 
-        private Bitmap GetDifference(Bitmap image1, Bitmap image2)
+        private void pictureBox1_MouseMove(object sender, MouseEventArgs e)
         {
-            Bitmap difference = new Bitmap(image1.Width, image1.Height);
-            for (int x = 0; x < image1.Width; x++)
+            if (isDrawing)
             {
-                for (int y = 0; y < image1.Height; y++)
-                {
-                    Color pixel1 = image1.GetPixel(x, y);
-                    Color pixel2 = image2.GetPixel(x, y);
-                    int diffR = Math.Abs(pixel1.R - pixel2.R);
-                    int diffG = Math.Abs(pixel1.G - pixel2.G);
-                    int diffB = Math.Abs(pixel1.B - pixel2.B);
-                    difference.SetPixel(x, y, Color.FromArgb(diffR, diffG, diffB));
-                }
+                graphics.DrawLine(penForDrawing, previousPoint, e.Location);
+                previousPoint = e.Location;
+                pictureBox1.Refresh();
             }
-            return difference;
         }
 
-        private void DrawHistogram(Bitmap image, PictureBox pictureBox)
+        private void pictureBox1_MouseUp(object sender, MouseEventArgs e)
         {
-            int[] hist = new int[256];
-            for (int x = 0; x < image.Width; x++)
-            {
-                for (int y = 0; y < image.Height; y++)
-                {
-                    Color pixel = image.GetPixel(x, y);
-                    hist[pixel.R]++;
-                }
-            }
-
-            int maxValue = hist.Max();
-
-            Bitmap histImage = new Bitmap(256, 200);
-            using (Graphics g = Graphics.FromImage(histImage))
-            {
-                g.Clear(Color.White);
-
-                for (int i = 0; i < 256; i++)
-                {
-                    int height = (int)((double)hist[i] / maxValue * 200);
-                    g.FillRectangle(Brushes.Red, i, 200 - height, 1, height);
-                }
-            }
-
-            pictureBox.Image = histImage;
+            isDrawing = false;
         }
 
-        private void button1_Click(object sender, EventArgs e)
+        private void FillArea(int x, int y)
+        {
+            if (x < 0 || x >= bitmap.Width || y < 0 || y >= bitmap.Height)
+                return;
+
+            Color currentColor = bitmap.GetPixel(x, y);
+            if (currentColor.ToArgb() == penForDrawing.Color.ToArgb() || currentColor.ToArgb() == targetColor.ToArgb())
+                return;
+
+            int leftX = x;
+            while (leftX >= 0 && bitmap.GetPixel(leftX, y).ToArgb() != penForDrawing.Color.ToArgb())
+            {
+                bitmap.SetPixel(leftX, y, targetColor);
+                leftX--;
+            }
+
+            int rightX = x;
+            while (rightX < bitmap.Width && bitmap.GetPixel(rightX, y).ToArgb() != penForDrawing.Color.ToArgb())
+            {
+                bitmap.SetPixel(rightX, y, targetColor);
+                rightX++;
+            }
+
+            pictureBox1.Refresh();
+
+            for (int i = leftX + 1; i < rightX; i++)
+            {
+                FillArea(i, y - 1);
+                FillArea(i, y + 1);
+            }
+        }
+
+        private void FillAreaWithPictures(int x, int y, int depth = 0)
+        {
+            if (x < 0 || x >= bitmap.Width || y < 0 || y >= bitmap.Height)
+                return;
+
+            Color currentColor = bitmap.GetPixel(x, y);
+
+            int patternX = ((x - clickedPoint.X) % pattern.Width + pattern.Width) % pattern.Width;
+            int patternY = ((y - clickedPoint.Y) % pattern.Height + pattern.Height) % pattern.Height;
+
+            Color patternColor = pattern.GetPixel(patternX, patternY);
+
+            if (currentColor.ToArgb() == penForDrawing.Color.ToArgb() || (currentColor.ToArgb() == patternColor.ToArgb() && depth > 0))
+                return;
+
+            int leftX = x;
+            while (leftX >= 0 && bitmap.GetPixel(leftX, y).ToArgb() != penForDrawing.Color.ToArgb())
+            {
+                patternX = ((leftX - clickedPoint.X) % pattern.Width + pattern.Width) % pattern.Width;
+
+                patternColor = pattern.GetPixel(patternX, patternY);
+
+                bitmap.SetPixel(leftX, y, patternColor);
+                leftX--;
+            }
+
+            int rightX = x;
+            while (rightX < bitmap.Width && bitmap.GetPixel(rightX, y).ToArgb() != penForDrawing.Color.ToArgb())
+            {
+                patternX = ((rightX - clickedPoint.X) % pattern.Width + pattern.Width) % pattern.Width;
+
+                patternColor = pattern.GetPixel(patternX, patternY);
+
+                bitmap.SetPixel(rightX, y, patternColor);
+                rightX++;
+            }
+
+            pictureBox1.Refresh();
+
+            for (int i = leftX + 1; i < rightX; i++)
+            {
+                FillAreaWithPictures(i, y - 1, depth + 1);
+                FillAreaWithPictures(i, y + 1, depth + 1);
+            }
+        }
+
+        private void FindBorder()
+        {
+            Point point = clickedPoint;
+
+            Color c = bitmap.GetPixel(point.X, point.Y);
+
+            int x = point.X;
+
+            while (c.ToArgb() != penForDrawing.Color.ToArgb())
+            {
+                x++;
+                c = bitmap.GetPixel(x, point.Y);
+            }
+
+            point = new Point(x, point.Y);
+
+            this.borderPoints.Clear();
+
+            borderPoints.Add(point);
+
+            Point prevPoint = point;
+
+            int prevDirection = 6;
+
+            while (true)
+            {
+                int newDirection = (prevDirection - 2 + 8) % 8;
+
+                Point currentPoint = GetNextBorderPoint(prevPoint, newDirection);
+
+                Color color = bitmap.GetPixel(currentPoint.X, currentPoint.Y);
+                
+                while (color.ToArgb() != penForDrawing.Color.ToArgb())
+                {
+                    newDirection = (newDirection + 1) % 8;
+
+                    currentPoint = GetNextBorderPoint(prevPoint, newDirection);
+
+                    color = bitmap.GetPixel(currentPoint.X, currentPoint.Y);
+                }
+
+                borderPoints.Add(currentPoint);
+
+                prevDirection = newDirection;
+
+                prevPoint = currentPoint;
+
+                if (currentPoint == point)
+                    break;
+            }
+
+            graphics.DrawLines(new Pen(Color.Red, 3), this.borderPoints.ToArray());
+
+            pictureBox1.Refresh();
+        }
+
+        private Point GetNextBorderPoint(Point currentPoint, int direction)
+        {
+            switch (direction)
+            {
+                case 0: 
+                    return new Point(currentPoint.X + 1, currentPoint.Y);
+                case 1: 
+                    return new Point(currentPoint.X + 1, currentPoint.Y - 1);
+                case 2: 
+                    return new Point(currentPoint.X, currentPoint.Y - 1);
+                case 3: 
+                    return new Point(currentPoint.X - 1, currentPoint.Y - 1);
+                case 4:
+                    return new Point(currentPoint.X - 1, currentPoint.Y);
+                case 5:
+                    return new Point(currentPoint.X - 1, currentPoint.Y + 1);
+                case 6:
+                    return new Point(currentPoint.X, currentPoint.Y + 1);
+                case 7:
+                    return new Point(currentPoint.X + 1, currentPoint.Y + 1);
+                default:
+                    throw new ArgumentException("Invalid direction");
+            }
+        }
+
+        private void pictureBox1_Click(object sender, EventArgs e)
+        {
+            clickedPoint = pictureBox1.PointToClient(Cursor.Position);
+
+            if (pictureBox1.Image == null || (currentMode != Mode.Fill1 && currentMode != Mode.Fill2))
+                return;
+
+            if (currentMode == Mode.Fill1)
+                FillArea(clickedPoint.X, clickedPoint.Y);
+            else if (pictureBox2.Image != null)
+                FillAreaWithPictures(clickedPoint.X, clickedPoint.Y);
+
+            pictureBox1.Refresh();
+        }
+
+        private void button3_Click(object sender, EventArgs e)
         {
             OpenFileDialog openFileDialog = new OpenFileDialog();
             openFileDialog.Filter = "Image files (*.jpg, *.png, *.bmp)|*.jpg;*.png;*.bmp";
@@ -95,8 +246,8 @@ namespace CG_Lab2
             {
                 try
                 {
-                    Bitmap image = new Bitmap(openFileDialog.FileName);
-                    mainPictureBox.Image = image;
+                    pattern = new Bitmap(openFileDialog.FileName);
+                    pictureBox2.Image = pattern;
                 }
                 catch (Exception ex)
                 {
@@ -105,50 +256,55 @@ namespace CG_Lab2
             }
         }
 
-        private void button2_Click(object sender, EventArgs e)
+        private void button1_Click(object sender, EventArgs e)
         {
-            if (mainPictureBox.Image == null)
-                return;
-
-            Bitmap grayScale = ConvertToGray((Bitmap)mainPictureBox.Image, ConvertionType.PAL);
-
-            pictureBox1.Image = grayScale;
+            graphics.Clear(Color.White);
+            pictureBox1.Refresh();
         }
 
-        private void button3_Click(object sender, EventArgs e)
+        ~FormTask1()
         {
-            if (mainPictureBox.Image == null)
-                return;
+            graphics.Dispose();
+            graphics = null;
+        }
 
-            Bitmap grayScale = ConvertToGray((Bitmap)mainPictureBox.Image, ConvertionType.HDTV);
+        private void button2_Click(object sender, EventArgs e)
+        {
+            ColorDialog colorDialog = new ColorDialog();
+            if (colorDialog.ShowDialog() == DialogResult.OK)
+            {
+                targetColor = colorDialog.Color;
+                colorPreviewPanel.BackColor = targetColor;
+            }
+        }
 
-            pictureBox2.Image = grayScale;
+        private void radioButton1_CheckedChanged(object sender, EventArgs e)
+        {
+            if (radioButton1.Checked)
+            {
+                currentMode = Mode.Drawing;
+            }
+        }
+
+        private void radioButton2_CheckedChanged(object sender, EventArgs e)
+        {
+            if (radioButton2.Checked)
+            {
+                currentMode = Mode.Fill1;
+            }
+        }
+
+        private void radioButton3_CheckedChanged(object sender, EventArgs e)
+        {
+            if (radioButton3.Checked)
+            {
+                currentMode = Mode.Fill2;
+            }
         }
 
         private void button4_Click(object sender, EventArgs e)
         {
-            if (pictureBox1.Image == null || pictureBox2.Image == null)
-                return;
-
-            Bitmap diff = GetDifference((Bitmap)pictureBox1.Image, (Bitmap)pictureBox2.Image);
-
-            pictureBox3.Image = diff;
-        }
-
-        private void button5_Click(object sender, EventArgs e)
-        {
-            if (pictureBox1.Image == null)
-                return;
-
-            DrawHistogram((Bitmap)pictureBox1.Image, pictureBox4);
-        }
-
-        private void button6_Click(object sender, EventArgs e)
-        {
-            if (pictureBox2.Image == null)
-                return;
-
-            DrawHistogram((Bitmap)pictureBox2.Image, pictureBox5);
+            FindBorder();
         }
     }
 }
